@@ -19,6 +19,7 @@ package com.netflix.eureka.resources;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
+import javax.ws.rs.OPTIONS;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -27,6 +28,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import java.util.Arrays;
@@ -65,6 +67,23 @@ public class ApplicationsResource {
     private final PeerAwareInstanceRegistry registry;
     private final ResponseCache responseCache;
 
+    private String _corsHeaders;
+
+    private Response makeCORS(ResponseBuilder req, String returnMethod) {
+       ResponseBuilder rb = req.header("Access-Control-Allow-Origin", "*")
+          .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+
+       if (!"".equals(returnMethod)) {
+          rb.header("Access-Control-Allow-Headers", returnMethod);
+       }
+
+       return rb.build();
+    }
+
+    private Response makeCORS(ResponseBuilder req) {
+       return makeCORS(req, _corsHeaders);
+    }
+
     @Inject
     ApplicationsResource(EurekaServerContext eurekaServer) {
         this.serverConfig = eurekaServer.getServerConfig();
@@ -92,6 +111,12 @@ public class ApplicationsResource {
             @PathParam("appId") String appId) {
         CurrentRequestVersion.set(Version.toEnum(version));
         return new ApplicationResource(appId, serverConfig, registry);
+    }
+
+    @OPTIONS
+    public Response getContainersPreflight(@HeaderParam("Access-Control-Request-Headers") String requestH) {
+        _corsHeaders = requestH;
+        return makeCORS(Response.ok(), requestH);
     }
 
     /**
@@ -146,17 +171,15 @@ public class ApplicationsResource {
                 keyType, CurrentRequestVersion.get(), EurekaAccept.fromString(eurekaAccept), regions
         );
 
-        Response response;
+        ResponseBuilder response;
         if (acceptEncoding != null && acceptEncoding.contains(HEADER_GZIP_VALUE)) {
             response = Response.ok(responseCache.getGZIP(cacheKey))
                     .header(HEADER_CONTENT_ENCODING, HEADER_GZIP_VALUE)
-                    .header(HEADER_CONTENT_TYPE, returnMediaType)
-                    .build();
+                    .header(HEADER_CONTENT_TYPE, returnMediaType);
         } else {
-            response = Response.ok(responseCache.get(cacheKey))
-                    .build();
+            response = Response.ok(responseCache.get(cacheKey));
         }
-        return response;
+        return makeCORS(response);
     }
 
     /**
