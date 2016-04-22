@@ -16,10 +16,11 @@
 
 package com.netflix.eureka.resources;
 
+import java.util.Arrays;
+
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
-import javax.ws.rs.OPTIONS;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -31,19 +32,18 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
-import java.util.Arrays;
 
 import com.netflix.appinfo.EurekaAccept;
+import com.netflix.eureka.EurekaServerConfig;
 import com.netflix.eureka.EurekaServerContext;
 import com.netflix.eureka.EurekaServerContextHolder;
-import com.netflix.eureka.registry.AbstractInstanceRegistry;
-import com.netflix.eureka.EurekaServerConfig;
-import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 import com.netflix.eureka.Version;
-import com.netflix.eureka.registry.ResponseCache;
-import com.netflix.eureka.registry.Key.KeyType;
-import com.netflix.eureka.registry.ResponseCacheImpl;
+import com.netflix.eureka.registry.AbstractInstanceRegistry;
 import com.netflix.eureka.registry.Key;
+import com.netflix.eureka.registry.Key.KeyType;
+import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
+import com.netflix.eureka.registry.ResponseCache;
+import com.netflix.eureka.registry.ResponseCacheImpl;
 import com.netflix.eureka.util.EurekaMonitors;
 
 /**
@@ -55,7 +55,7 @@ import com.netflix.eureka.util.EurekaMonitors;
  */
 @Path("/{version}/apps")
 @Produces({"application/xml", "application/json"})
-public class ApplicationsResource {
+public class ApplicationsResource extends AbstractCORSResource {
     private static final String HEADER_ACCEPT = "Accept";
     private static final String HEADER_ACCEPT_ENCODING = "Accept-Encoding";
     private static final String HEADER_CONTENT_ENCODING = "Content-Encoding";
@@ -66,23 +66,6 @@ public class ApplicationsResource {
     private final EurekaServerConfig serverConfig;
     private final PeerAwareInstanceRegistry registry;
     private final ResponseCache responseCache;
-
-    private String _corsHeaders;
-
-    private Response makeCORS(ResponseBuilder req, String returnMethod) {
-       ResponseBuilder rb = req.header("Access-Control-Allow-Origin", "*")
-          .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-
-       if (!"".equals(returnMethod)) {
-          rb.header("Access-Control-Allow-Headers", returnMethod);
-       }
-
-       return rb.build();
-    }
-
-    private Response makeCORS(ResponseBuilder req) {
-       return makeCORS(req, _corsHeaders);
-    }
 
     @Inject
     ApplicationsResource(EurekaServerContext eurekaServer) {
@@ -111,12 +94,6 @@ public class ApplicationsResource {
             @PathParam("appId") String appId) {
         CurrentRequestVersion.set(Version.toEnum(version));
         return new ApplicationResource(appId, serverConfig, registry);
-    }
-
-    @OPTIONS
-    public Response getContainersPreflight(@HeaderParam("Access-Control-Request-Headers") String requestH) {
-        _corsHeaders = requestH;
-        return makeCORS(Response.ok(), requestH);
     }
 
     /**

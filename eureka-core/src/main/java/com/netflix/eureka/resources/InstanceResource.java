@@ -16,6 +16,13 @@
 
 package com.netflix.eureka.resources;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
@@ -28,20 +35,15 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.appinfo.InstanceInfo.InstanceStatus;
 import com.netflix.eureka.EurekaServerConfig;
-import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 import com.netflix.eureka.cluster.PeerEurekaNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.netflix.eureka.registry.PeerAwareInstanceRegistry;
 
 /**
  * A <em>jersey</em> resource that handles operations for a particular instance.
@@ -50,7 +52,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 @Produces({"application/xml", "application/json"})
-public class InstanceResource {
+public class InstanceResource extends AbstractCORSResource {
     private static final Logger logger = LoggerFactory
             .getLogger(InstanceResource.class);
 
@@ -58,7 +60,6 @@ public class InstanceResource {
     private final EurekaServerConfig serverConfig;
     private final String id;
     private final ApplicationResource app;
-
 
     InstanceResource(ApplicationResource app, String id, EurekaServerConfig serverConfig, PeerAwareInstanceRegistry registry) {
         this.app = app;
@@ -259,10 +260,10 @@ public class InstanceResource {
                 metadataMap.put(entry.getKey(), entry.getValue().get(0));
             }
             registry.register(instanceInfo, false);
-            return Response.ok().build();
+            return makeCORS(Response.ok());
         } catch (Throwable e) {
             logger.error("Error updating metadata for instance " + id, e);
-            return Response.serverError().build();
+            return makeCORS(Response.serverError());
         }
 
     }
@@ -284,10 +285,10 @@ public class InstanceResource {
 
         if (isSuccess) {
             logger.debug("Found (Cancel): " + app.getName() + " - " + id);
-            return Response.ok().build();
+            return makeCORS(Response.ok());
         } else {
             logger.info("Not Found (Cancel): " + app.getName() + " - " + id);
-            return Response.status(Status.NOT_FOUND).build();
+            return makeCORS(Response.status(Status.NOT_FOUND));
         }
     }
 
